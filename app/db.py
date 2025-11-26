@@ -1,22 +1,24 @@
-from sqlmodel import create_engine, Session
+# app/db.py
 import os
+from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import NullPool
 
-# Read DATABASE_URL from environment variables.
-# For local development we will fall back to sqlite file.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
 
-# Create database engine
 if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(DATABASE_URL, echo=True)
+    # SQLite needs the check_same_thread connect arg
+    engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
 else:
-    # For PostgreSQL on Render or production
-    engine = create_engine(DATABASE_URL, echo=True, poolclass=NullPool)
+    # For postgres / production use NullPool to avoid connection pinning in some platforms
+    engine = create_engine(DATABASE_URL, echo=False, poolclass=NullPool)
 
-def create_db_and_tables():
-    from .models import SQLModel
+def create_db_and_tables() -> None:
+    # Import models so SQLModel.metadata knows about them
+    # avoid circular imports by importing inside the function
+    from . import models  # noqa: F401
     SQLModel.metadata.create_all(engine)
 
 def get_session():
     with Session(engine) as session:
         yield session
+
