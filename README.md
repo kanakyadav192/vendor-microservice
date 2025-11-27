@@ -48,7 +48,29 @@ classDiagram
     Vendor "1" -- "0..*" VendorScore : has
 ```
 
-## 🛠️ Tech Stack
+## � Project Structure
+
+```text
+vendor-microservice/
+├── alembic/                # Database migrations
+├── app/
+│   ├── crud.py             # Database CRUD operations
+│   ├── db.py               # Database connection and session
+│   ├── main.py             # API endpoints and app entry point
+│   ├── models.py           # SQLModel data models
+│   ├── schemas.py          # Pydantic schemas
+│   └── scoring.py          # Scoring logic implementation
+├── tests/
+│   ├── test_api.py         # API integration tests
+│   └── test_scoring.py     # Unit tests for scoring logic
+├── alembic.ini             # Alembic configuration
+├── Procfile                # Render deployment configuration
+├── requirements.txt        # Python dependencies
+├── runtime.txt             # Python version for Render
+└── README.md               # Project documentation
+```
+
+## �🛠️ Tech Stack
 
 *   **Language**: Python 3.12+
 *   **Framework**: FastAPI
