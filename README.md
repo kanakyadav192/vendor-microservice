@@ -171,3 +171,20 @@ curl -X 'GET' \
     ```bash
     PYTHONPATH=. pytest
     ```
+
+## 📝 Notes, Trade-offs, and Assumptions
+
+*   **Assumptions**:
+    *   **Scoring**: The scoring formula assumes that `on_time_delivery_rate` and `compliance_score` are percentages (0-100).
+    *   **Timestamps**: The system relies on the `timestamp` field in the metric payload to determine the "latest" metric for scoring, allowing for out-of-order ingestion.
+    *   **Categories**: Vendor categories are case-insensitive. Unknown categories default to a weight of `1.0`.
+
+*   **Trade-offs**:
+    *   **Synchronous Scoring**: Currently, scoring happens synchronously when a metric is ingested. In a high-throughput production environment, this should be offloaded to a background task queue (e.g., Celery) to avoid blocking the API response.
+    *   **Authentication**: For simplicity and ease of testing, no authentication (JWT/OAuth) is implemented. A real-world scenario would strictly require secured endpoints.
+    *   **Database**: The project is configured to use SQLite for local development (`dev.db`) and PostgreSQL for production (Render), ensuring easy setup while being production-ready.
+
+*   **Future Improvements**:
+    *   Add authentication and role-based access control.
+    *   Implement more granular scoring history and analytics.
+    *   Add caching for frequently accessed vendor scores.
