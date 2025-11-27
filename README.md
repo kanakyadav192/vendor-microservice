@@ -1,225 +1,151 @@
-Vendor Score Microservice
-Overview
+# Vendor Score Microservice
 
-The Vendor Score Microservice allows businesses to register vendors, submit performance metrics, compute numeric scores, and retrieve vendor details.
-This project demonstrates backend engineering skills: API design, database modeling, validation, scoring logic, migrations, testing, and documentation.
+A backend microservice for managing vendor profiles, tracking performance metrics, and calculating vendor scores based on various criteria.
 
-Features
+## 🚀 Deployment
 
-Register vendors
+**Base URL:** [https://vendor-microservice.onrender.com](https://vendor-microservice.onrender.com)
 
-Submit performance metrics
+You can access the interactive API documentation (Swagger UI) at:
+[https://vendor-microservice.onrender.com/docs](https://vendor-microservice.onrender.com/docs)
 
-Compute vendor score based on weighted factors
+## 📋 Features
 
-Get vendor details with the latest score
+*   **Vendor Management**: Create and retrieve vendor profiles.
+*   **Metric Ingestion**: Record performance metrics (delivery rate, complaints, etc.) for vendors.
+*   **Scoring System**: Automatically calculates a score (0-100) based on weighted metrics.
+*   **History Tracking**: View historical scores for a vendor.
+*   **Periodic Recomputation**: Endpoint available to trigger score updates for all vendors.
 
-Get vendor score history
+## 🏗️ Data Structure
 
-Recompute all vendor scores (admin endpoint)
-
-Input validation for all requests
-
-Auto-generated API Docs with Swagger
-
-Tech Stack
-
-Framework: FastAPI
-
-Language: Python 3.12
-
-Database: SQLite (local), PostgreSQL (optional)
-
-ORM: SQLModel
-
-Migrations: Alembic
-
-Testing: Pytest
-
-Server: Uvicorn
-
-API Endpoints
-1. Register a Vendor
-
-POST /vendors
-
-Request Body
-
-{
-  "name": "Acme",
-  "category": "supplier"
-}
-
-
-Response
-
-{
-  "id": 10,
-  "name": "Acme",
-  "category": "supplier",
-  "created_at": "2025-11-26T07:17:13.564277"
-}
-
-2. Submit Vendor Metrics
-
-POST /vendors/{vendor_id}/metrics
-
-Request Body
-
-{
-  "timestamp": "2025-11-24T10:00:00Z",
-  "on_time_delivery_rate": 92.5,
-  "complaint_count": 1,
-  "missing_documents": false,
-  "compliance_score": 85.0
-}
-
-
-Response
-
-{
-  "metric_id": 2,
-  "vendor_id": 10,
-  "score_snapshot_id": 3,
-  "score": 87.34,
-  "score_calculated_at": "2025-11-26T07:23:51.544634"
-}
-
-3. Get Vendor Details + Latest Score
-
-GET /vendors/{vendor_id}
-
-Response
-
-{
-  "id": 10,
-  "name": "Acme",
-  "category": "supplier",
-  "created_at": "2025-11-26T07:17:13.564277",
-  "latest_score": 87.34,
-  "latest_score_at": "2025-11-26T07:23:51.544634"
-}
-
-4. Get Vendor Score History
-
-GET /vendors/{vendor_id}/scores
-
-Response
-
-[
-  {
-    "id": 3,
-    "score": 87.34,
-    "calculated_at": "2025-11-26T07:23:51.544634"
-  }
-]
-
-5. Admin — Recompute All Scores
-
-POST /admin/recompute_scores
-
-Response
-
-{
-  "recomputed": 2,
-  "snapshots": [
-    {
-      "vendor_id": 8,
-      "score": 87.34,
-      "calculated_at": "2025-11-26T07:40:29.509272"
-    },
-    {
-      "vendor_id": 10,
-      "score": 87.34,
-      "calculated_at": "2025-11-26T07:40:29.511940"
+```mermaid
+classDiagram
+    class Vendor {
+        +int id
+        +str name
+        +str category
+        +datetime created_at
+        +datetime updated_at
     }
-  ]
-}
+    class VendorMetric {
+        +int id
+        +int vendor_id
+        +datetime timestamp
+        +float on_time_delivery_rate
+        +int complaint_count
+        +bool missing_documents
+        +float compliance_score
+    }
+    class VendorScore {
+        +int id
+        +int vendor_id
+        +float score
+        +datetime calculated_at
+    }
 
-6. Health Check
+    Vendor "1" -- "0..*" VendorMetric : has
+    Vendor "1" -- "0..*" VendorScore : has
+```
 
-GET /health
+## 🛠️ Tech Stack
 
-Response
+*   **Language**: Python 3.12+
+*   **Framework**: FastAPI
+*   **Database**: PostgreSQL (via SQLModel/SQLAlchemy)
+*   **Migrations**: Alembic
+*   **Testing**: pytest
 
-{
-  "status": "ok"
-}
+## 🔢 Scoring Logic
 
-Installation & Setup
-1. Clone the repository
-git clone https://github.com/kanakyadav192/vendor-microservice
-cd vendor-microservice
+The vendor score is calculated out of 100 based on the following formula:
 
-2. Create & activate virtual environment
-python3 -m venv venv
-source venv/bin/activate   # Mac/Linux
-venv\Scripts\activate      # Windows
+1.  **On-Time Delivery**: Contributes up to **40 points**.
+2.  **Compliance Score**: Contributes up to **25 points**.
+3.  **Complaints**: Reduces score (penalty).
+    *   Uses a diminishing returns formula: `5 * (1 - exp(-count / 5))`.
+    *   Max penalty capped at **20 points**.
+4.  **Missing Documents**: Fixed penalty of **15 points** if true.
+5.  **Category Weight**: The final score is adjusted by a multiplier based on vendor category:
+    *   `supplier`: 1.00
+    *   `distributor`: 0.97
+    *   `dealer`: 0.95
+    *   `gold`: 1.05
+    *   `silver`: 1.02
 
-3. Install dependencies
-pip install -r requirements.txt
+**Final Score** = `(Baseline + OnTime + Compliance - Complaints - MissingDocs) * CategoryWeight`
+*Clamped between 0 and 100.*
 
-4. Run migrations
-export PYTHONPATH=$(pwd)
-alembic upgrade head
+## 🔌 API Endpoints & Curl Commands
 
-5. Start the server
-uvicorn app.main:app --reload
+### 1. Create a Vendor
+```bash
+curl -X 'POST' \
+  'https://vendor-microservice.onrender.com/vendors' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "Acme Corp",
+  "category": "supplier"
+}'
+```
 
-6. Access API docs
-http://127.0.0.1:8000/docs
+### 2. Ingest Metrics
+```bash
+curl -X 'POST' \
+  'https://vendor-microservice.onrender.com/vendors/1/metrics' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "timestamp": "2023-11-27T10:00:00Z",
+  "on_time_delivery_rate": 95.5,
+  "complaint_count": 0,
+  "missing_documents": false,
+  "compliance_score": 90.0
+}'
+```
 
-Testing
+### 3. Get Vendor Details (with Latest Score)
+```bash
+curl -X 'GET' \
+  'https://vendor-microservice.onrender.com/vendors/1'
+```
 
-Run all tests:
+### 4. Get Score History
+```bash
+curl -X 'GET' \
+  'https://vendor-microservice.onrender.com/vendors/1/scores?limit=10&offset=0'
+```
 
-pytest -q
+### 5. Health Check
+```bash
+curl -X 'GET' \
+  'https://vendor-microservice.onrender.com/health'
+```
 
-Project Structure
-vendor-microservice/
-├── app/
-│   ├── main.py
-│   ├── models.py
-│   ├── schemas.py
-│   ├── scoring.py
-│   ├── database.py
-│   └── routes/
-├── alembic/
-│   ├── versions/
-│   └── env.py
-├── tests/
-├── dev.db
-├── requirements.txt
-├── runtime.txt
-└── README.md
+## ⚙️ Local Setup
 
-Scoring Logic
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/kanakyadav192/vendor-microservice.git
+    cd vendor-microservice
+    ```
 
-Vendor score is computed using weighted metrics:
+2.  **Create a virtual environment**:
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
 
-40% – On-time delivery rate
+3.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-30% – Compliance score
+4.  **Run the application**:
+    ```bash
+    uvicorn app.main:app --reload
+    ```
 
-Penalty – Complaint count
-
-Penalty – Missing documents
-
-Scores are stored as VendorScore snapshots linked to metrics.
-
-Deployment Notes
-
-Python version: 3.12.0
-
-Works on Render, Railway, Fly.io, etc.
-
-Status
-
-✔ All migrations applied
-✔ All tests passing
-✔ All endpoints working
-
-Author
-
-Kanak Yadav
-Backend Engineer | Python Developer | FastAPI Enthusiast
+5.  **Run Tests**:
+    ```bash
+    PYTHONPATH=. pytest
+    ```

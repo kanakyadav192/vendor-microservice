@@ -25,6 +25,10 @@ class MetricCreateRequest(BaseModel):
 def on_startup():
     create_db_and_tables()
 
+@app.get("/")
+def root():
+    return {"message": "Welcome to the Vendor Score Microservice", "docs_url": "/docs"}
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
