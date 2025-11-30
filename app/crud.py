@@ -38,7 +38,7 @@ def add_metric(session: Session, vendor_id: int, metric_data: dict) -> VendorMet
     return m
 
 def latest_metric_for_vendor(session: Session, vendor_id: int) -> Optional[VendorMetric]:
-    stmt = select(VendorMetric).where(VendorMetric.vendor_id == vendor_id).order_by(VendorMetric.timestamp.desc())
+    stmt = select(VendorMetric).where(VendorMetric.vendor_id == vendor_id).order_by(VendorMetric.timestamp.desc(), VendorMetric.id.desc())
     return session.exec(stmt).first()
 
 # --- Scoring operations --------------------------------
